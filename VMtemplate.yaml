@@ -106,4 +106,4 @@ parameters:
   - name: VM_PASSWORD
     description: Password for the fedora user
     generate: expression
-    from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'    # Changed to match RH pattern
+    from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'    
