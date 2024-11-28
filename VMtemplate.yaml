@@ -1,0 +1,109 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: fedora-python-tiny
+  namespace: openshift
+  labels:
+    flavor.template.kubevirt.io/tiny: 'true'
+    template.kubevirt.io/type: vm
+    vm.kubevirt.io/template: fedora-tiny
+    workload.template.kubevirt.io/server: 'true'
+  annotations:
+    template.kubevirt.io/provider: 'OpenShift Virtualization'
+    template.kubevirt.io/provider-url: 'https://fedoraproject.org/cloud/'
+    openshift.io/display-name: 'Fedora Cloud Base Tiny Python VM for Kasten K10 Demo'
+    description: |
+      Demo lab template for testing Veeam Kasten K10 backup and replication capabilities.
+      Creates a minimal Fedora CoreOS VM running a small Python web application.
+      Use Case: Demonstrates VM backup/restore and replication in OpenShift Virtualization.
+      Default login: fedora/gocubsgo
+    openshift.io/documentation-url: 'https://docs.kasten.io'
+    tags: 'kasten,backup,demo,kubevirt,virtualmachine,k10,veeam,replication'
+    template.kubevirt.io/version: v1
+    template.kubevirt.io/editable: |
+      true
+    template.kubevirt.io/demo-purpose: |
+      This template is specifically designed for demonstrating Veeam Kasten K10's
+      backup and replication features with OpenShift Virtualization VMs.
+    template.kubevirt.io/images: |
+      https://download.fedoraproject.org/pub/fedora/linux/releases/39/Cloud/x86_64/images/Fedora-Cloud-Base-39-1.5.x86_64.qcow2
+objects:
+  - apiVersion: kubevirt.io/v1
+    kind: VirtualMachine
+    metadata:
+      labels:
+        app: '${NAME}'
+        vm.kubevirt.io/template: fedora-tiny
+        vm.kubevirt.io/template.revision: '1'
+        app.kubernetes.io/name: premier-league-app
+        app.kubernetes.io/part-of: demo-lab
+      name: '${NAME}'
+    spec:
+      dataVolumeTemplates:
+        - apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: '${NAME}'
+          spec:
+            source:
+              http:
+                url: https://download.fedoraproject.org/pub/fedora/linux/releases/39/Cloud/x86_64/images/Fedora-Cloud-Base-39-1.5.x86_64.qcow2
+            storage:
+              resources:
+                requests:
+                  storage: 10Gi
+      running: false
+      template:
+        metadata:
+          annotations:
+            vm.kubevirt.io/flavor: tiny
+            vm.kubevirt.io/os: fedora
+          labels:
+            kubevirt.io/domain: '${NAME}'
+            kubevirt.io/size: tiny
+            app.kubernetes.io/name: premier-league-app
+            app.kubernetes.io/part-of: demo-lab
+        spec:
+          domain:
+            cpu:
+              cores: 1
+              sockets: 1
+              threads: 1
+            devices:
+              disks:
+                - disk:
+                    bus: virtio
+                  name: rootdisk
+                - disk:
+                    bus: virtio
+                  name: cloudinitdisk
+              interfaces:
+                - masquerade: {}
+                  model: virtio
+                  name: default
+            memory:
+              guest: 512Mi
+          networks:
+            - name: default
+              pod: {}
+          volumes:
+            - dataVolume:
+                name: '${NAME}'
+              name: rootdisk
+            - name: cloudinitdisk
+              cloudInitNoCloud:
+                userData: |-
+                  #cloud-config
+                  user: fedora
+                  password: ${VM_PASSWORD}
+                  chpasswd: { expire: False }
+
+parameters:
+  - name: NAME
+    description: VM name
+    generate: expression
+    from: 'fedora-[a-z0-9]{16}'
+  - name: VM_PASSWORD
+    description: Password for the fedora user
+    generate: expression
+    from: '[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}'    # Changed to match RH pattern
